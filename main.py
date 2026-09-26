@@ -49,8 +49,9 @@ def writer_bot_publish(topic: str, research_data: str):
     Include an appealing title, an introduction, key subheadings (H2, H3), pros/cons or key takeaways, and a conclusion.
     """
     
+    # Using gemini-2.5-flash with the new API key (1 request/day is well within the 20 free tier limit)
     response = client.models.generate_content(
-        model='gemini-1.5-flash',
+        model='gemini-2.5-flash',
         contents=prompt
     )
     
