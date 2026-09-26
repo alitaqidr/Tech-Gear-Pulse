@@ -2,7 +2,7 @@ name: Tech Gear Pulse
 
 on:
   schedule:
-    # Runs daily at 08:00 UTC (Adjust time if needed)
+    # Runs ONCE daily at 08:00 UTC (Adjust time if needed)
     - cron: '0 8 * * *'
   workflow_dispatch: # Allows manual trigger from GitHub UI
 
