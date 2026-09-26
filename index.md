@@ -1,6 +1,6 @@
 ---
 layout: home
-title: Home
+title: Tech Gear Pulse
 ---
 
 # Welcome to Tech Gear Pulse
