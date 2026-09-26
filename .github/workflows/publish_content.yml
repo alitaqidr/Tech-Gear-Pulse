@@ -1,40 +1,41 @@
-name: Zero-Cost AI Automated Publishing
+name: Daily Autonomous Content & Affiliate Publisher
 
 on:
   schedule:
+    # Runs daily at 08:00 UTC (Adjust time if needed)
     - cron: '0 8 * * *'
-  workflow_dispatch:
+  workflow_dispatch: # Allows manual trigger from GitHub UI
 
 jobs:
-  run-publisher:
+  build-and-publish:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Repository Code
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Set up Python 3.11
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Install Python Dependencies
+      - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install --no-cache-dir -r requirements.txt
+          pip install google-genai requests
 
-      - name: Execute Autonomous Script
+      - name: Run 2-Bot Pipeline
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           AMAZON_AFFILIATE_TAG: ${{ secrets.AMAZON_AFFILIATE_TAG }}
-        run: |
-          python main.py
+          EBAY_CAMPAIGN_ID: ${{ secrets.EBAY_CAMPAIGN_ID }}
+          WALMART_PUBLISHER_ID: ${{ secrets.WALMART_PUBLISHER_ID }}
+          TEMU_AFFILIATE_CODE: ${{ secrets.TEMU_AFFILIATE_CODE }}
+        run: python main.py
 
-      - name: Commit and Push New Posts Back to GitHub
+      - name: Commit and Push Generated Articles
         run: |
-          git config --global user.name "AI-Publisher-Bot"
-          git config --global user.email "actions@github.com"
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
           git add posts/
-          git commit -m "auto: publish monetized article [skip ci]" || exit 0
-          git pull --rebase origin main
-          git push
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Auto-published new blog post [skip ci]" && git push)
