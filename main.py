@@ -1,4 +1,5 @@
 import os
+import re
 import sys
 import urllib.parse
 import urllib.request
@@ -87,7 +88,7 @@ def writer_bot_publish(topic: str, research_data: str):
     Incorporate these recent news headlines/trends discovered by research:
     {research_data}
     
-    Include an appealing title, an introduction, key subheadings (H2, H3), pros/cons or key takeaways, and a conclusion.
+    Include an appealing title starting with '# ', an introduction, key subheadings (H2, H3), pros/cons or key takeaways, and a conclusion.
     """
 
     try:
@@ -130,14 +131,32 @@ def writer_bot_publish(topic: str, research_data: str):
 </div>
 ---
 """
-    monetized_content = raw_content + "\n\n" + ad_banner_block + "\n\n*Disclaimer: As an affiliate, this platform earns from qualifying purchases.*"
+    # Extract article title for Jekyll front matter
+    title_match = re.search(r"^#\s+(.*)", raw_content, re.MULTILINE)
+    article_title = title_match.group(1).replace('"', "'") if title_match else "Tech Gear Pulse Update"
+
+    # YAML Front Matter required by Jekyll
+    today_date = datetime.now().strftime('%Y-%m-%d')
+    timestamp_id = datetime.now().strftime('%H%M%S')
     
-    os.makedirs('posts', exist_ok=True)
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    filename = f"posts/article_{timestamp}.md"
+    yaml_header = f"""---
+layout: post
+title: "{article_title}"
+date: {today_date}
+tags: [tech, gadgets, reviews]
+---
+
+"""
+
+    full_content = yaml_header + raw_content + "\n\n" + ad_banner_block + "\n\n*Disclaimer: As an affiliate, this platform earns from qualifying purchases.*"
+    
+    # Save directly to _posts/ with Jekyll-compliant filename (YYYY-MM-DD-title.md)
+    slugified_title = re.sub(r'[^a-zA-Z0-9]', '-', article_title.lower())[:30].strip('-')
+    os.makedirs('_posts', exist_ok=True)
+    filename = f"_posts/{today_date}-{slugified_title}-{timestamp_id}.md"
     
     with open(filename, 'w', encoding='utf-8') as f:
-        f.write(monetized_content)
+        f.write(full_content)
         
     print(f"[Bot 2 - Writer]: Article successfully generated and saved to '{filename}'.")
 
