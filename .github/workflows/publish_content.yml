@@ -2,7 +2,7 @@ name: Tech Gear Pulse
 
 on:
   schedule:
-    # Runs ONCE daily at 08:00 UTC (Adjust time if needed)
+    # Runs ONCE daily at 08:00 UTC
     - cron: '0 8 * * *'
   workflow_dispatch: # Allows manual trigger from GitHub UI
 
@@ -22,15 +22,17 @@ jobs:
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install google-genai requests
+          pip install -r requirements.txt
 
       - name: Run 2-Bot Pipeline
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           AMAZON_AFFILIATE_TAG: ${{ secrets.AMAZON_AFFILIATE_TAG }}
           EBAY_CAMPAIGN_ID: ${{ secrets.EBAY_CAMPAIGN_ID }}
-          WALMART_PUBLISHER_ID: ${{ secrets.WALMART_PUBLISHER_ID }}
           TEMU_AFFILIATE_CODE: ${{ secrets.TEMU_AFFILIATE_CODE }}
+          DARAZ_AFFILIATE_ID: ${{ secrets.DARAZ_AFFILIATE_ID }}
+          ADSENSE_CLIENT_ID: ${{ secrets.ADSENSE_CLIENT_ID }}
+          ADSENSE_SLOT_ID: ${{ secrets.ADSENSE_SLOT_ID }}
         run: python main.py
 
       - name: Commit and Push Generated Articles
