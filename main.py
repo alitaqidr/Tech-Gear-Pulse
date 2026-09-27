@@ -147,12 +147,12 @@ def writer_bot_publish(topic: str, research_data: str):
 </div>
 """
 
-    # Visual Banner Posters Section
+    # Visual Banner Posters Section (Amazon, eBay, Temu, Daraz)
     ad_banner_block = f"""
 ---
 <div align="center" style="padding: 20px; border: 1px solid #e1e4e8; border-radius: 12px; margin: 30px 0; background: #ffffff; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
   <p style="margin: 0 0 10px 0; font-size: 0.8em; color: #888; letter-spacing: 1.5px; font-weight: bold; text-transform: uppercase;">Featured Marketplace Deals</p>
-  <h3 style="margin: 0 0 20px 0; color: #1a1a1a;">🛒 Shop Visual Banners for "{topic}"</h3>
+  <h3 style="margin: 0 0 20px 0; color: #1a1a1a;">🛒 Shop Trending Deals for "{topic}"</h3>
   
   <div style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; max-width: 900px;">
     
