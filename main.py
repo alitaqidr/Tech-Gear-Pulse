@@ -104,33 +104,95 @@ def writer_bot_publish(topic: str, research_data: str):
         print(f"[Error]: Content generation failed with model '{selected_model}': {str(e)}")
         sys.exit(1)
 
-    # Multi-marketplace links
+    # Multi-marketplace links & IDs
     encoded_topic = urllib.parse.quote(topic)
+    
+    # Amazon
     amazon_tag = os.getenv("AMAZON_AFFILIATE_TAG", "yourtag-20")
     amazon_url = f"https://www.amazon.com/s?k={encoded_topic}&tag={amazon_tag}"
     
+    # eBay
     ebay_campaign_id = os.getenv("EBAY_CAMPAIGN_ID", "")
     ebay_url = f"https://www.ebay.com/sch/i.html?_nkw={encoded_topic}"
     if ebay_campaign_id:
         ebay_url += f"&mkcid=1&mkrid=711-53200-19255-0&siteid=0&campid={ebay_campaign_id}"
 
-    walmart_url = f"https://www.walmart.com/search?q={encoded_topic}"
+    # Temu
+    temu_code = os.getenv("TEMU_AFFILIATE_CODE", "")
     temu_url = f"https://www.temu.com/search_result.html?search_key={encoded_topic}"
+    if temu_code:
+        temu_url += f"&refer_code={temu_code}"
 
+    # Daraz
+    daraz_affiliate_id = os.getenv("DARAZ_AFFILIATE_ID", "")
+    daraz_url = f"https://www.daraz.pk/catalog/?q={encoded_topic}"
+    if daraz_affiliate_id:
+        daraz_url += f"&aff_id={daraz_affiliate_id}"
+
+    # Google AdSense Script Block
+    adsense_client = os.getenv("ADSENSE_CLIENT_ID", "ca-pub-0000000000000000")
+    adsense_slot = os.getenv("ADSENSE_SLOT_ID", "0000000000")
+    adsense_block = f"""
+<div align="center" style="margin: 25px 0;">
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client={adsense_client}" crossorigin="anonymous"></script>
+  <ins class="adsbygoogle"
+       style="display:block"
+       data-ad-client="{adsense_client}"
+       data-ad-slot="{adsense_slot}"
+       data-ad-format="auto"
+       data-full-width-responsive="true"></ins>
+  <script>
+       (adsbygoogle = window.adsbygoogle || []).push({{}});
+  </script>
+</div>
+"""
+
+    # Visual Banner Posters Section
     ad_banner_block = f"""
 ---
-<div align="center" style="padding: 18px; border: 2px solid #e0e0e0; border-radius: 10px; margin: 30px 0; background-color: #f8f9fa;">
-  <p style="margin: 0; font-size: 0.8em; color: #777; letter-spacing: 1px; font-weight: bold;">SPONSORED PRODUCTS & MARKETPLACE DEALS</p>
-  <h3 style="margin: 10px 0; color: #222;">🛒 Shop Trending Deals for "{topic}"</h3>
-  <div style="display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 12px;">
-    <a href="{amazon_url}" target="_blank" rel="nofollow sponsored" style="background-color: #FF9900; color: #111; padding: 8px 16px; text-decoration: none; font-weight: bold; border-radius: 5px;">Amazon →</a>
-    <a href="{ebay_url}" target="_blank" rel="nofollow sponsored" style="background-color: #0064D2; color: #fff; padding: 8px 16px; text-decoration: none; font-weight: bold; border-radius: 5px;">eBay →</a>
-    <a href="{walmart_url}" target="_blank" rel="nofollow sponsored" style="background-color: #0071DC; color: #fff; padding: 8px 16px; text-decoration: none; font-weight: bold; border-radius: 5px;">Walmart →</a>
-    <a href="{temu_url}" target="_blank" rel="nofollow sponsored" style="background-color: #FB7701; color: #fff; padding: 8px 16px; text-decoration: none; font-weight: bold; border-radius: 5px;">Temu →</a>
+<div align="center" style="padding: 20px; border: 1px solid #e1e4e8; border-radius: 12px; margin: 30px 0; background: #ffffff; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+  <p style="margin: 0 0 10px 0; font-size: 0.8em; color: #888; letter-spacing: 1.5px; font-weight: bold; text-transform: uppercase;">Featured Marketplace Deals</p>
+  <h3 style="margin: 0 0 20px 0; color: #1a1a1a;">🛒 Shop Visual Banners for "{topic}"</h3>
+  
+  <div style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; max-width: 900px;">
+    
+    <!-- Amazon Poster -->
+    <a href="{amazon_url}" target="_blank" rel="nofollow sponsored" style="text-decoration: none; color: inherit; width: 160px; border: 1px solid #eee; border-radius: 8px; overflow: hidden; background: #fff; transition: transform 0.2s;">
+      <img src="https://images.unsplash.com/photo-1523474253046-8cd2748b5fd2?w=400&q=80" alt="Amazon Deals" style="width: 100%; height: 110px; object-fit: cover; display: block;" />
+      <div style="padding: 10px; background: #FF9900; text-align: center; color: #111; font-weight: bold; font-size: 0.9em;">
+        Amazon →
+      </div>
+    </a>
+
+    <!-- eBay Poster -->
+    <a href="{ebay_url}" target="_blank" rel="nofollow sponsored" style="text-decoration: none; color: inherit; width: 160px; border: 1px solid #eee; border-radius: 8px; overflow: hidden; background: #fff; transition: transform 0.2s;">
+      <img src="https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=400&q=80" alt="eBay Deals" style="width: 100%; height: 110px; object-fit: cover; display: block;" />
+      <div style="padding: 10px; background: #0064D2; text-align: center; color: #fff; font-weight: bold; font-size: 0.9em;">
+        eBay →
+      </div>
+    </a>
+
+    <!-- Temu Poster -->
+    <a href="{temu_url}" target="_blank" rel="nofollow sponsored" style="text-decoration: none; color: inherit; width: 160px; border: 1px solid #eee; border-radius: 8px; overflow: hidden; background: #fff; transition: transform 0.2s;">
+      <img src="https://images.unsplash.com/photo-1472851294608-062f824d29cc?w=400&q=80" alt="Temu Deals" style="width: 100%; height: 110px; object-fit: cover; display: block;" />
+      <div style="padding: 10px; background: #FB7701; text-align: center; color: #fff; font-weight: bold; font-size: 0.9em;">
+        Temu →
+      </div>
+    </a>
+
+    <!-- Daraz Poster -->
+    <a href="{daraz_url}" target="_blank" rel="nofollow sponsored" style="text-decoration: none; color: inherit; width: 160px; border: 1px solid #eee; border-radius: 8px; overflow: hidden; background: #fff; transition: transform 0.2s;">
+      <img src="https://images.unsplash.com/photo-1555529669-e69e7aa0ba9a?w=400&q=80" alt="Daraz Deals" style="width: 100%; height: 110px; object-fit: cover; display: block;" />
+      <div style="padding: 10px; background: #f57224; text-align: center; color: #fff; font-weight: bold; font-size: 0.9em;">
+        Daraz →
+      </div>
+    </a>
+
   </div>
 </div>
 ---
 """
+
     # Extract article title for Jekyll front matter
     title_match = re.search(r"^#\s+(.*)", raw_content, re.MULTILINE)
     article_title = title_match.group(1).replace('"', "'") if title_match else "Tech Gear Pulse Update"
@@ -148,7 +210,15 @@ tags: [tech, gadgets, reviews]
 
 """
 
-    full_content = yaml_header + raw_content + "\n\n" + ad_banner_block + "\n\n*Disclaimer: As an affiliate, this platform earns from qualifying purchases.*"
+    full_content = (
+        yaml_header 
+        + raw_content 
+        + "\n\n" 
+        + adsense_block 
+        + "\n\n" 
+        + ad_banner_block 
+        + "\n\n*Disclaimer: As an affiliate, this platform earns from qualifying purchases.*"
+    )
     
     # Save directly to _posts/ with Jekyll-compliant filename (YYYY-MM-DD-title.md)
     slugified_title = re.sub(r'[^a-zA-Z0-9]', '-', article_title.lower())[:30].strip('-')
