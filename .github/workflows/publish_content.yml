@@ -2,9 +2,9 @@ name: Tech Gear Pulse
 
 on:
   schedule:
-    # Runs ONCE daily at 08:00 UTC
+    # Runs ONCE daily at 08:00 UTC (Stops continuous minute builds)
     - cron: '0 8 * * *'
-  workflow_dispatch: # Allows manual trigger from GitHub UI
+  workflow_dispatch:
 
 jobs:
   build-and-publish:
@@ -33,6 +33,13 @@ jobs:
           DARAZ_AFFILIATE_ID: ${{ secrets.DARAZ_AFFILIATE_ID }}
           ADSENSE_CLIENT_ID: ${{ secrets.ADSENSE_CLIENT_ID }}
           ADSENSE_SLOT_ID: ${{ secrets.ADSENSE_SLOT_ID }}
+          HASHNODE_TOKEN: ${{ secrets.HASHNODE_TOKEN }}
+          HASHNODE_PUBLICATION_ID: ${{ secrets.HASHNODE_PUBLICATION_ID }}
+          REDDIT_CLIENT_ID: ${{ secrets.REDDIT_CLIENT_ID }}
+          REDDIT_CLIENT_SECRET: ${{ secrets.REDDIT_CLIENT_SECRET }}
+          REDDIT_USERNAME: ${{ secrets.REDDIT_USERNAME }}
+          REDDIT_PASSWORD: ${{ secrets.REDDIT_PASSWORD }}
+          REDDIT_SUBREDDIT: ${{ secrets.REDDIT_SUBREDDIT }}
         run: python main.py
 
       - name: Commit and Push Generated Articles
