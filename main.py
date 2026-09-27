@@ -1,10 +1,12 @@
 import os
 import re
 import sys
+import json
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
 from datetime import datetime
+import praw
 from google import genai
 
 # ==========================================
@@ -52,11 +54,9 @@ def get_best_available_model(client: genai.Client) -> str:
         print("[Bot 2 - Writer]: Querying API for available models...")
         available_models = [m.name for m in client.models.list() if "generateContent" in getattr(m, "supported_generation_methods", [])]
         
-        # Strip 'models/' prefix if present in SDK return
         clean_models = [m.replace("models/", "") for m in available_models]
         print(f"[Bot 2 - Writer]: Found active models: {clean_models}")
         
-        # Priority order: preferred flash models -> preferred pro models -> any available model
         for target in ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-flash", "gemini-2.5-pro", "gemini-pro"]:
             for model in clean_models:
                 if target in model:
@@ -68,6 +68,87 @@ def get_best_available_model(client: genai.Client) -> str:
         print(f"[Bot 2 - Writer]: Model auto-discovery warning ({str(e)}). Defaulting to 'gemini-2.5-flash'.")
         
     return "gemini-2.5-flash"
+
+def publish_to_hashnode(title: str, markdown_content: str):
+    """Publishes the article directly to Hashnode."""
+    token = os.getenv("HASHNODE_TOKEN")
+    pub_id = os.getenv("HASHNODE_PUBLICATION_ID")
+
+    if not token or not pub_id:
+        print("[Hashnode]: Skipped (HASHNODE_TOKEN or HASHNODE_PUBLICATION_ID missing).")
+        return
+
+    url = "https://gql.hashnode.com"
+    headers = {
+        "Authorization": token,
+        "Content-Type": "application/json"
+    }
+
+    query = """
+    mutation PublishPost($input: PublishPostInput!) {
+      publishPost(input: $input) {
+        post {
+          id
+          title
+          url
+        }
+      }
+    }
+    """
+
+    variables = {
+        "input": {
+            "title": title,
+            "contentMarkdown": markdown_content,
+            "publicationId": pub_id,
+            "tags": []
+        }
+    }
+
+    try:
+        req = urllib.request.Request(
+            url,
+            data=json.dumps({"query": query, "variables": variables}).encode("utf-8"),
+            headers=headers,
+            method="POST"
+        )
+        with urllib.request.urlopen(req) as resp:
+            res_data = json.loads(resp.read().decode())
+            if "errors" in res_data:
+                print(f"[Hashnode Error]: {res_data['errors']}")
+            else:
+                post_url = res_data.get("data", {}).get("publishPost", {}).get("post", {}).get("url")
+                print(f"[Hashnode]: Article published successfully -> {post_url}")
+    except Exception as e:
+        print(f"[Hashnode Exception]: {str(e)}")
+
+
+def publish_to_reddit(title: str, markdown_content: str):
+    """Posts the article to your chosen Subreddit."""
+    client_id = os.getenv("REDDIT_CLIENT_ID")
+    client_secret = os.getenv("REDDIT_CLIENT_SECRET")
+    username = os.getenv("REDDIT_USERNAME")
+    password = os.getenv("REDDIT_PASSWORD")
+    subreddit_name = os.getenv("REDDIT_SUBREDDIT")
+
+    if not all([client_id, client_secret, username, password, subreddit_name]):
+        print("[Reddit]: Skipped (Reddit credentials incomplete in environment).")
+        return
+
+    try:
+        reddit = praw.Reddit(
+            client_id=client_id,
+            client_secret=client_secret,
+            username=username,
+            password=password,
+            user_agent="TechGearPulseBot/1.0 by /u/" + username
+        )
+
+        subreddit = reddit.subreddit(subreddit_name)
+        submission = subreddit.submit(title, selftext=markdown_content)
+        print(f"[Reddit]: Article published to r/{subreddit_name} -> {submission.url}")
+    except Exception as e:
+        print(f"[Reddit Exception]: {str(e)}")
 
 def writer_bot_publish(topic: str, research_data: str):
     print(f"[Bot 2 - Writer]: Initializing Gemini Client...")
@@ -104,32 +185,33 @@ def writer_bot_publish(topic: str, research_data: str):
         print(f"[Error]: Content generation failed with model '{selected_model}': {str(e)}")
         sys.exit(1)
 
-    # Multi-marketplace links & IDs
     encoded_topic = urllib.parse.quote(topic)
     
-    # Amazon
+    # 1. Amazon Link
     amazon_tag = os.getenv("AMAZON_AFFILIATE_TAG", "yourtag-20")
     amazon_url = f"https://www.amazon.com/s?k={encoded_topic}&tag={amazon_tag}"
     
-    # eBay
+    # 2. eBay Link (Using official EPN tracking parameters)
     ebay_campaign_id = os.getenv("EBAY_CAMPAIGN_ID", "")
-    ebay_url = f"https://www.ebay.com/sch/i.html?_nkw={encoded_topic}"
+    target_ebay = f"https://www.ebay.com/sch/i.html?_nkw={encoded_topic}"
     if ebay_campaign_id:
-        ebay_url += f"&mkcid=1&mkrid=711-53200-19255-0&siteid=0&campid={ebay_campaign_id}"
+        ebay_url = f"{target_ebay}&mkevt=1&mkcid=1&mkrid=711-53200-19255-0&campid={ebay_campaign_id}&toolid=10001"
+    else:
+        ebay_url = target_ebay
 
-    # Temu
+    # 3. Temu Link
     temu_code = os.getenv("TEMU_AFFILIATE_CODE", "")
     temu_url = f"https://www.temu.com/search_result.html?search_key={encoded_topic}"
     if temu_code:
         temu_url += f"&refer_code={temu_code}"
 
-    # Daraz
+    # 4. Daraz Link
     daraz_affiliate_id = os.getenv("DARAZ_AFFILIATE_ID", "")
     daraz_url = f"https://www.daraz.pk/catalog/?q={encoded_topic}"
     if daraz_affiliate_id:
         daraz_url += f"&aff_id={daraz_affiliate_id}"
 
-    # Google AdSense Script Block
+    # Google AdSense Code
     adsense_client = os.getenv("ADSENSE_CLIENT_ID", "ca-pub-0000000000000000")
     adsense_slot = os.getenv("ADSENSE_SLOT_ID", "0000000000")
     adsense_block = f"""
@@ -147,7 +229,7 @@ def writer_bot_publish(topic: str, research_data: str):
 </div>
 """
 
-    # Visual Banner Posters Section (Amazon, eBay, Temu, Daraz)
+    # Visual Poster Banner Block
     ad_banner_block = f"""
 ---
 <div align="center" style="padding: 20px; border: 1px solid #e1e4e8; border-radius: 12px; margin: 30px 0; background: #ffffff; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
@@ -157,7 +239,7 @@ def writer_bot_publish(topic: str, research_data: str):
   <div style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; max-width: 900px;">
     
     <!-- Amazon Poster -->
-    <a href="{amazon_url}" target="_blank" rel="nofollow sponsored" style="text-decoration: none; color: inherit; width: 160px; border: 1px solid #eee; border-radius: 8px; overflow: hidden; background: #fff; transition: transform 0.2s;">
+    <a href="{amazon_url}" target="_blank" rel="nofollow sponsored" style="text-decoration: none; color: inherit; width: 160px; border: 1px solid #eee; border-radius: 8px; overflow: hidden; background: #fff;">
       <img src="https://images.unsplash.com/photo-1523474253046-8cd2748b5fd2?w=400&q=80" alt="Amazon Deals" style="width: 100%; height: 110px; object-fit: cover; display: block;" />
       <div style="padding: 10px; background: #FF9900; text-align: center; color: #111; font-weight: bold; font-size: 0.9em;">
         Amazon →
@@ -165,7 +247,7 @@ def writer_bot_publish(topic: str, research_data: str):
     </a>
 
     <!-- eBay Poster -->
-    <a href="{ebay_url}" target="_blank" rel="nofollow sponsored" style="text-decoration: none; color: inherit; width: 160px; border: 1px solid #eee; border-radius: 8px; overflow: hidden; background: #fff; transition: transform 0.2s;">
+    <a href="{ebay_url}" target="_blank" rel="nofollow sponsored" style="text-decoration: none; color: inherit; width: 160px; border: 1px solid #eee; border-radius: 8px; overflow: hidden; background: #fff;">
       <img src="https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=400&q=80" alt="eBay Deals" style="width: 100%; height: 110px; object-fit: cover; display: block;" />
       <div style="padding: 10px; background: #0064D2; text-align: center; color: #fff; font-weight: bold; font-size: 0.9em;">
         eBay →
@@ -173,7 +255,7 @@ def writer_bot_publish(topic: str, research_data: str):
     </a>
 
     <!-- Temu Poster -->
-    <a href="{temu_url}" target="_blank" rel="nofollow sponsored" style="text-decoration: none; color: inherit; width: 160px; border: 1px solid #eee; border-radius: 8px; overflow: hidden; background: #fff; transition: transform 0.2s;">
+    <a href="{temu_url}" target="_blank" rel="nofollow sponsored" style="text-decoration: none; color: inherit; width: 160px; border: 1px solid #eee; border-radius: 8px; overflow: hidden; background: #fff;">
       <img src="https://images.unsplash.com/photo-1472851294608-062f824d29cc?w=400&q=80" alt="Temu Deals" style="width: 100%; height: 110px; object-fit: cover; display: block;" />
       <div style="padding: 10px; background: #FB7701; text-align: center; color: #fff; font-weight: bold; font-size: 0.9em;">
         Temu →
@@ -181,7 +263,7 @@ def writer_bot_publish(topic: str, research_data: str):
     </a>
 
     <!-- Daraz Poster -->
-    <a href="{daraz_url}" target="_blank" rel="nofollow sponsored" style="text-decoration: none; color: inherit; width: 160px; border: 1px solid #eee; border-radius: 8px; overflow: hidden; background: #fff; transition: transform 0.2s;">
+    <a href="{daraz_url}" target="_blank" rel="nofollow sponsored" style="text-decoration: none; color: inherit; width: 160px; border: 1px solid #eee; border-radius: 8px; overflow: hidden; background: #fff;">
       <img src="https://images.unsplash.com/photo-1555529669-e69e7aa0ba9a?w=400&q=80" alt="Daraz Deals" style="width: 100%; height: 110px; object-fit: cover; display: block;" />
       <div style="padding: 10px; background: #f57224; text-align: center; color: #fff; font-weight: bold; font-size: 0.9em;">
         Daraz →
@@ -193,11 +275,9 @@ def writer_bot_publish(topic: str, research_data: str):
 ---
 """
 
-    # Extract article title for Jekyll front matter
     title_match = re.search(r"^#\s+(.*)", raw_content, re.MULTILINE)
     article_title = title_match.group(1).replace('"', "'") if title_match else "Tech Gear Pulse Update"
 
-    # YAML Front Matter required by Jekyll
     today_date = datetime.now().strftime('%Y-%m-%d')
     timestamp_id = datetime.now().strftime('%H%M%S')
     
@@ -220,7 +300,6 @@ tags: [tech, gadgets, reviews]
         + "\n\n*Disclaimer: As an affiliate, this platform earns from qualifying purchases.*"
     )
     
-    # Save directly to _posts/ with Jekyll-compliant filename (YYYY-MM-DD-title.md)
     slugified_title = re.sub(r'[^a-zA-Z0-9]', '-', article_title.lower())[:30].strip('-')
     os.makedirs('_posts', exist_ok=True)
     filename = f"_posts/{today_date}-{slugified_title}-{timestamp_id}.md"
@@ -228,7 +307,11 @@ tags: [tech, gadgets, reviews]
     with open(filename, 'w', encoding='utf-8') as f:
         f.write(full_content)
         
-    print(f"[Bot 2 - Writer]: Article successfully generated and saved to '{filename}'.")
+    print(f"[Bot 2 - Writer]: Article successfully saved to local website folder '{filename}'.")
+
+    # Publish externally to Hashnode and Reddit
+    publish_to_hashnode(article_title, raw_content + "\n\n" + ad_banner_block)
+    publish_to_reddit(article_title, raw_content + "\n\n" + ad_banner_block)
 
 # ==========================================
 # PIPELINE ORCHESTRATION
