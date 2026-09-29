@@ -314,21 +314,32 @@ tags: [tech, gadgets, reviews]
     publish_to_reddit(article_title, raw_content + "\n\n" + ad_banner_block)
 
 # ==========================================
-# PIPELINE ORCHESTRATION
+# PIPELINE ORCHESTRATION (10 DAILY SLOTS)
 # ==========================================
 TOPIC_SCHEDULE = {
-    0: "Smart Home Automation, Desk Setups, and Workspace Gadgets",
-    1: "Fitness Tech, Smartwatches, and Outdoor Hiking Gear Trends",
-    2: "Home Office Cybersecurity, Mesh Wi-Fi, and Network Storage Hardware",
-    3: "Portable Power Stations, EV Chargers, and Solar Energy Tech",
-    4: "Gaming PC Hardware, OLED Gaming Monitors, and Ergonomic Chairs",
-    5: "Smart Kitchen Gadgets, Air Fryers, and Automated Home Appliances",
-    6: "Noise-Canceling Headphones, Mobile Accessories, and Audio Tech"
+    0:  "Smart Home Automation, Desk Setups, and Workspace Gadgets",
+    2:  "Fitness Tech, Smartwatches, and Outdoor Hiking Gear Trends",
+    5:  "Home Office Cybersecurity, Mesh Wi-Fi, and Network Storage Hardware",
+    7:  "Portable Power Stations, EV Chargers, and Solar Energy Tech",
+    10: "Gaming PC Hardware, OLED Gaming Monitors, and Ergonomic Chairs",
+    12: "Smart Kitchen Gadgets, Air Fryers, and Automated Home Appliances",
+    14: "Noise-Canceling Headphones, Mobile Accessories, and Audio Tech",
+    17: "Artificial Intelligence Tools, Laptops, and Productivity Gadgets",
+    19: "Smart Photography Gear, Drones, and Vlogging Accessories",
+    22: "Wearable Health Tech, Sleep Trackers, and Smart Wellness Devices"
 }
 
+def get_current_topic() -> str:
+    current_hour = datetime.utcnow().hour
+    # Pick closest schedule slot matching the scheduled hour
+    closest_hour = min(TOPIC_SCHEDULE.keys(), key=lambda h: abs(h - current_hour))
+    return TOPIC_SCHEDULE[closest_hour]
+
 def run():
-    day_of_week = datetime.now().weekday()
-    topic = os.getenv("PUBLISH_TOPIC", TOPIC_SCHEDULE.get(day_of_week, "Smart Home Automation"))
+    topic = os.getenv("PUBLISH_TOPIC")
+    if not topic:
+        topic = get_current_topic()
+        
     print(f"--- Starting Publishing Pipeline for Topic: '{topic}' ---")
     
     research_insights = research_bot_scout(topic)
